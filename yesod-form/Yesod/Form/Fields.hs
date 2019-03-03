@@ -20,6 +20,7 @@ module Yesod.Form.Fields
     , textareaField
     , hiddenField
     , intField
+    , intRangeField
     , dayField
     , timeField
     , timeFieldTypeTime
@@ -31,6 +32,7 @@ module Yesod.Form.Fields
     , AutoFocus
     , urlField
     , doubleField
+    , doubleRangeField
     , parseDate
     , parseTime
     , Textarea (..)
@@ -145,6 +147,40 @@ doubleField = Field
     , fieldView = \theId name attrs val isReq -> toWidget [hamlet|
 $newline never
 <input id="#{theId}" name="#{name}" *{attrs} type="number" step=any :isReq:required="" value="#{showVal val}">
+|]
+    , fieldEnctype = UrlEncoded
+    }
+  where showVal = either id (pack . show)
+
+-- | Creates a input with @type="range"@ and @step=1@.
+intRangeField :: (Monad m, Integral i, RenderMessage (HandlerSite m) FormMessage) => Field m i
+intRangeField = Field
+    { fieldParse = parseHelper $ \s ->
+        case Data.Text.Read.signed Data.Text.Read.decimal s of
+            Right (a, "") -> Right a
+            _ -> Left $ MsgInvalidInteger s
+
+    , fieldView = \theId name attrs val isReq -> toWidget [hamlet|
+$newline never
+<input id="#{theId}" name="#{name}" *{attrs} type="range" step=1 :isReq:required="" value="#{showVal val}">
+|]
+    , fieldEnctype = UrlEncoded
+    }
+  where
+    showVal = either id (pack . showI)
+    showI x = show (fromIntegral x :: Integer)
+
+-- | Creates a input with @type="range"@ and @step=any@.
+doubleRangeField :: Monad m => RenderMessage (HandlerSite m) FormMessage => Field m Double
+doubleRangeField = Field
+    { fieldParse = parseHelper $ \s ->
+        case Data.Text.Read.double (prependZero s) of
+            Right (a, "") -> Right a
+            _ -> Left $ MsgInvalidNumber s
+
+    , fieldView = \theId name attrs val isReq -> toWidget [hamlet|
+$newline never
+<input id="#{theId}" name="#{name}" *{attrs} type="range" step=any :isReq:required="" value="#{showVal val}">
 |]
     , fieldEnctype = UrlEncoded
     }
